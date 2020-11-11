@@ -4,21 +4,38 @@ import socket
 import sys
 import time
 import threading
+from Vesper import client as cl
+import json 
+
 class Server(threading.Thread):
+    def __init__(self, usrname):
+        threading.Thread.__init__(self)
+        self.username = usrname
+
     def run(self):
+        addr = "http://127.0.0.1:5000"
+        key = "online"
+        #packet = json.loads(str(cl.get(addr, key)))
+        packet = cl.get(addr, key)
+        res = {}
+        if packet['code'] == 'success':
+            res = json.loads(packet['payload']['value'])
         self.sock=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         print("Server started successfully\n")
         hostname=''
         #port = socket.SOCK_STREAM
         self.sock.bind((hostname,0))
         self.sock.listen(1)
+        res[self.username] = self.sock.getsockname()[1]
+        res_str = json.dumps(res)
+        cl.put(addr, key, str(res_str))
         print("Listening on port ", self.sock.getsockname()[1])        
         #time.sleep(2)    
         (clientname,address)=self.sock.accept()
         print("Connection from %s\n" % str(address))        
         while 1:
             chunk=clientname.recv(4096)            
-            print(str(address)+':'+str(chunk)) 
+            print(str(address)+':'+str(chunk))
 
 class Client(threading.Thread):    
     def connect(self,host,port):
@@ -49,8 +66,11 @@ class Client(threading.Thread):
             print("Sending\n")
             self.client(host,port,str.encode(msg))
         return(1)
+
+
 if __name__=='__main__':
-    srv=Server()
+    usrname = input("Enter your username: ")
+    srv=Server(usrname)
     srv.daemon=True
     print("Starting server")
     srv.start()
